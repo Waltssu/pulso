@@ -24,7 +24,8 @@ jobs:
             -sdk iphoneos -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/Pulso.xcarchive \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            archive
           test -d build/Pulso.xcarchive/Products/Applications/Pulso.app
 
       - name: Ad-hoc sign with entitlements + package Payload zip
