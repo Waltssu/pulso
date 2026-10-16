@@ -1,0 +1,46 @@
+name: iOS IPA build
+
+# Builds Pulso.app for real devices and packages Pulso-unsigned.ipa.
+# Ad-hoc signature embeds Pulso.entitlements so AltStore PAL can read them
+# when re-signing with a personal Apple ID (the signature itself is replaced).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ipa:
+    name: Archive + package .ipa
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Archive (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild -project Pulso.xcodeproj -scheme Pulso \
+            -sdk iphoneos -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Pulso.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+          test -d build/Pulso.xcarchive/Products/Applications/Pulso.app
+
+      - name: Ad-hoc sign with entitlements + package Payload zip
+        run: |
+          set -euo pipefail
+          APP=build/Pulso.xcarchive/Products/Applications/Pulso.app
+          codesign --force --sign - --timestamp=none \
+            --entitlements Pulso/Pulso.entitlements "$APP"
+          codesign -d --entitlements :- "$APP" | head -30
+          rm -rf Payload && mkdir Payload
+          ditto "$APP" Payload/Pulso.app
+          ditto -c -k --sequesterRsrc --keepParent Payload Pulso-unsigned.ipa
+          ls -lh Pulso-unsigned.ipa
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pulso-unsigned.ipa
+          path: Pulso-unsigned.ipa
